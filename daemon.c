@@ -9,7 +9,7 @@
 #include <sched.h>
 #include <sys/ioctl.h>
 #include <linux/watchdog.h>
-
+#include <sys/prctl.h>
 #include <errno.h>
 #include "log.h"
 
@@ -31,7 +31,10 @@ while (0);
 static int timeout = 20;
 static int bootstatus = 0;
 
-void create_daemon(void);
+void create_daemon1(void);
+void create_daemon2(void);
+int proc_daemon(void);
+
 void dump_last_kmsg();
 
 int main(void)
@@ -43,8 +46,9 @@ int main(void)
 
 
     
-    create_daemon();
-
+    create_daemon1();
+    
+    prctl(PR_SET_NAME, "sys_daemon");
 
     log_init("/usr/longertek/longer_daemon.log", LOG_ERROR);
 
@@ -106,7 +110,7 @@ int main(void)
     }
     return 0;
 }
-void create_daemon(void)
+void create_daemon1(void)
 {
     pid_t pid;
     int fd1, fd2, fd3;
@@ -115,8 +119,58 @@ void create_daemon(void)
     pid = fork();
     if( pid == -1)
         ERR_EXIT("fork error");
-    if(pid > 0 )
+    if(pid > 0 ) {
+        create_daemon2();
+        log_init("/usr/longertek/proc_daemon.log", LOG_ERROR);
+        proc_daemon();
         exit(EXIT_SUCCESS);
+    
+    }
+    
+    if(setsid() == -1)
+        ERR_EXIT("SETSID ERROR");
+    chdir("/");
+        
+    close(0);
+    close(1);
+    close(2);
+
+    
+    
+    fd1 = open("/dev/null", O_RDWR);
+
+        
+    fd2 = dup(0);
+
+    fd3 = dup(0);
+    
+    /* test fd dup */
+#if 0    
+    file = fopen("/tmp/dup.log", "a+");
+    fprintf(file, "fd = %d\n", fd1);
+    fprintf(file, "fd = %d\n", fd2);
+    fprintf(file, "fd = %d\n", fd3);
+    fclose(file);
+#endif
+    umask(0);
+    signal(SIGCHLD,SIG_IGN);
+    
+    return;
+}
+
+void create_daemon2(void)
+{
+    pid_t pid;
+    int fd1, fd2, fd3;
+    /* FILE *file; */
+    
+    pid = fork();
+    if( pid == -1)
+        ERR_EXIT("fork error");
+    if(pid > 0 ) {
+        exit(EXIT_SUCCESS);
+    }
+    
     if(setsid() == -1)
         ERR_EXIT("SETSID ERROR");
     chdir("/");
