@@ -50,7 +50,8 @@ static const char *level_names[] = {
 void log_init(char *path, int prio)
 {
     FILE *fd;
-
+    int fd_no;
+    
     memset(&L, 0, sizeof(L));
     log_set_level(prio);
     if (pthread_mutex_init(&log_mutex, NULL)) {
@@ -76,6 +77,9 @@ void log_init(char *path, int prio)
         L.pos += fprintf(fd, "log offset:23        ");
 	    L.pos += fprintf(fd, "\n");
 	    fflush(fd);
+        fd_no = fileno(fd);
+        fsync(fd_no);
+
 
 	}
 
