@@ -74,8 +74,8 @@ int pid_to_process_index(int *pids, int pid)
 
 int find_longertek_cmdline(char *cmdline)
 {
-    if (strncmp(cmdline, "/usr/longertek/", 15))
-        return -1;
+    /* if (strncmp(cmdline, "/usr/longertek/", 15)) */
+    /*     return -1; */
 
     if (strstr(cmdline, "QT_LAC"))
         return 0;

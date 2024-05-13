@@ -50,7 +50,7 @@ int main(void)
     
     prctl(PR_SET_NAME, "sys_daemon");
 
-    log_init("/usr/longertek/longer_daemon.log", LOG_ERROR);
+    log_init("/opt/longertek/longer_daemon.log", LOG_ERROR);
 
     min_prio = sched_get_priority_min(SCHED_FIFO);
     if (min_prio < 0)
@@ -121,7 +121,7 @@ void create_daemon1(void)
         ERR_EXIT("fork error");
     if(pid > 0 ) {
         create_daemon2();
-        log_init("/usr/longertek/proc_daemon.log", LOG_ERROR);
+        log_init("/opt/longertek/proc_daemon.log", LOG_ERROR);
         proc_daemon();
         exit(EXIT_SUCCESS);
     
