@@ -33,6 +33,8 @@ struct process_snapshot
 
 };
 
+static struct process_snapshot g_ps;
+static struct process_snapshot g_ps_orig;
     
 int pid_to_process_index(int *pids, int pid)
 {
@@ -80,7 +82,8 @@ int find_longertek_cmdline(char *cmdline)
     if (strstr(cmdline, "QT_LAC"))
         return 0;
 
-    else if (strstr(cmdline, "TrainAircon"))
+   else if (strstr(cmdline, "TrainAircon"))
+    /* else if (strstr(cmdline, "PCBCheck"))  */
         return 1;
     else
         return -1;
@@ -264,10 +267,20 @@ int scan_process(struct process_snapshot *ps)
 
 }
 
+void sig_handler(int no)
+{
+    if (no == SIGRTMIN) {
+        log_error("get signal from heartbeat process.");
+        restart_process(&g_ps, &g_ps_orig);
+
+    }
+    
+
+
+}
+
 int proc_daemon()
 {
-    struct process_snapshot ps;
-    struct process_snapshot ps_orig;
     int i, j;
     int qt_pid_matched = 0;
     int aircon_pid_matched = 0;
@@ -276,15 +289,15 @@ int proc_daemon()
 
     prctl(PR_SET_NAME, "proc_daemon");
     sleep(MAX_CHECK_DELAY);
-    
-    memset(&ps_orig, 0, sizeof(ps_orig));
+    signal(SIGRTMIN, sig_handler);
+    memset(&g_ps_orig, 0, sizeof(g_ps_orig));
     
     while (1) {
         
         sleep(2);
-        memset(&ps, 0, sizeof(ps));
+        memset(&g_ps, 0, sizeof(g_ps));
         
-        cnt = scan_process(&ps);
+        cnt = scan_process(&g_ps);
         if (cnt < 0)
             continue;
     
@@ -292,7 +305,7 @@ int proc_daemon()
         if (cnt == ALL_PROCESS_CNT && !all_process_booted)
         {
             all_process_booted = 1;
-            memcpy(&ps_orig, &ps, sizeof(ps));
+            memcpy(&g_ps_orig, &g_ps, sizeof(g_ps));
         
         
         }
@@ -306,7 +319,7 @@ int proc_daemon()
             
             log_error("process crashing detected, pid cnt %d", cnt);
             err_cnt = 0;
-            restart_process(&ps, &ps_orig);
+            restart_process(&g_ps, &g_ps_orig);
             
 
         }
@@ -321,19 +334,19 @@ int proc_daemon()
             err_cnt = 0;
 
             log_error("process crashing detected at first detect, pid cnt %d", cnt);
-            restart_process(&ps, &ps_orig);
+            restart_process(&g_ps, &g_ps_orig);
             
         } else {
 
             if (all_process_booted)
             {
-                for (i = 0; i < ps_orig.qt_pid_cnt; i++)
+                for (i = 0; i < g_ps_orig.qt_pid_cnt; i++)
                 {
                     qt_pid_matched = 0;
                     
-                    for (j = 0; j <  ps.qt_pid_cnt; j++)
+                    for (j = 0; j <  g_ps.qt_pid_cnt; j++)
                     {
-                        if (ps_orig.qt_pids[i] == ps.qt_pids[j])
+                        if (g_ps_orig.qt_pids[i] == g_ps.qt_pids[j])
                         {
                             
                             qt_pid_matched = 1;
@@ -360,13 +373,13 @@ int proc_daemon()
                 }
                 
 
-                for (i = 0; i < ps_orig.aircon_pid_cnt; i++)
+                for (i = 0; i < g_ps_orig.aircon_pid_cnt; i++)
                 {
                     aircon_pid_matched = 0;
                     
-                    for (j = 0; j <  ps.aircon_pid_cnt; j++)
+                    for (j = 0; j <  g_ps.aircon_pid_cnt; j++)
                     {
-                        if (ps_orig.aircon_pids[i] == ps.aircon_pids[j])
+                        if (g_ps_orig.aircon_pids[i] == g_ps.aircon_pids[j])
                         {
                             
                             aircon_pid_matched = 1;
@@ -395,7 +408,7 @@ int proc_daemon()
 
             restart:
                 log_error("process pids not match the original %d %d", qt_pid_matched, aircon_pid_matched);
-                restart_process(&ps, &ps_orig);
+                restart_process(&g_ps, &g_ps_orig);
                  
 
             }

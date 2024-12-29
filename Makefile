@@ -1,6 +1,6 @@
 EXEC = ./longer_daemon
-OBJS = daemon.o proc_daemon.o log.o
-SRC  = daemon.c proc_daemon.c log.c 
+OBJS = daemon.o proc_daemon.o log.o logger.o
+SRC  = daemon.c proc_daemon.c log.c logger.c
 
 CC = arm-linux-gnueabihf-gcc
 #CC = arm-none-linux-gnueabi-gcc

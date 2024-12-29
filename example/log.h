@@ -25,48 +25,35 @@ enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 #define log_error(...) log_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
 #define log_fatal(...) log_log(LOG_FATAL, __FILE__, __LINE__, __VA_ARGS__)
 
+#define TBUF_LEN 2048
 #define MAX_FILE_SIZE 8000000
+#define MAXTRIES 5
+#define PATH_LOG "/var/log/daemon_logger"
+#define PATH_HEARTBEAT "/var/log/daemon_heartbeat"
+    
 
+#define LOG_DATA_INIT { \
+    .ident = NULL, \
+    .log_file = -1, \
+    .log_connected = 0, \
+    .log_opened = 0, \
+    .level = 0, \
+}
+        
 #define MAX_THREAD_PER_PROCESS 10
-
-struct logger_data 
-{
-    FILE *fd;
-    int sd;
-    int pos;
-    char *log_path;
     
-};
-
-struct heartbeat_item 
+#ifdef __cplusplus
+extern "C" 
 {
-    int pid;
-    time_t next_time;
-    time_t cycle;
-    
-};
-
-struct heartbeat_data 
-{
-    int sd;
-    struct heartbeat_item items[MAX_THREAD_PER_PROCESS * 5];
-    int item_cnt;
-   
-
-};
-    
-void logger_init(char *path);
-void logger_loop(struct logger_data *data);
-
-void heartbeat_init(void);
-void heartbeat_loop(struct heartbeat_data *data);
-
+#endif    
+void log_open(const char *ident, int prio);
+void log_close();
 void log_init(char *path, int prio);
-void log_set_udata(void *udata);
-void log_set_lock(log_LockFn lockFn, log_UnLockFn unlockFn);
-void log_set_fp(FILE *fp);
-void log_set_level(int level);
 void log_log(int level, const char *file, int line, const char *fmt, ...);
-void copy_log(char *log, int len);
+void heartbeat_init(void);
+void heartbeat_timeout(int sec);
+#ifdef __cplusplus
+}
 
+#endif    
 #endif

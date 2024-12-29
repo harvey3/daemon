@@ -28,8 +28,12 @@ do\
 }\
 while (0);
 
+extern struct logger_data ldata;
+extern struct heartbeat_data hb_data;
+
 static int timeout = 20;
 static int bootstatus = 0;
+pid_t proc_daemon_pid;
 
 void create_daemon1(void);
 void create_daemon2(void);
@@ -50,7 +54,7 @@ int main(void)
     
     prctl(PR_SET_NAME, "sys_daemon");
 
-    log_init("/opt/longertek/longer_daemon.log", LOG_ERROR);
+    log_init("/usr/longertek/longer_daemon.log", LOG_ERROR);
 
     min_prio = sched_get_priority_min(SCHED_FIFO);
     if (min_prio < 0)
@@ -110,22 +114,9 @@ int main(void)
     }
     return 0;
 }
-void create_daemon1(void)
+void do_daemon()
 {
-    pid_t pid;
     int fd1, fd2, fd3;
-    /* FILE *file; */
-    
-    pid = fork();
-    if( pid == -1)
-        ERR_EXIT("fork error");
-    if(pid > 0 ) {
-        create_daemon2();
-        log_init("/opt/longertek/proc_daemon.log", LOG_ERROR);
-        proc_daemon();
-        exit(EXIT_SUCCESS);
-    
-    }
     
     if(setsid() == -1)
         ERR_EXIT("SETSID ERROR");
@@ -154,6 +145,57 @@ void create_daemon1(void)
 #endif
     umask(0);
     signal(SIGCHLD,SIG_IGN);
+
+
+}
+    
+void create_daemon1(void)
+{
+    pid_t pid;
+
+    /* FILE *file; */
+    
+    pid = fork();
+    if( pid == -1)
+        ERR_EXIT("fork error");
+    if(pid > 0 ) {
+
+        pid = fork();
+
+        if (pid == -1)
+            ERR_EXIT("fork error");
+        
+        if (pid > 0) {
+
+            proc_daemon_pid = pid;
+            
+            pid = fork();
+
+            if (pid == -1)
+                ERR_EXIT("fork error");
+            if (pid > 0) {
+                create_daemon2();
+                log_init("/usr/longertek/heartbeat_daemon.log", LOG_ERROR);
+                heartbeat_init();
+                heartbeat_loop(&hb_data);
+                exit(EXIT_SUCCESS);
+
+            }
+            
+            do_daemon();
+            logger_init("/usr/longertek/logger_daemon.log");
+            logger_loop(&ldata);
+            exit(EXIT_SUCCESS);
+            
+        }
+        do_daemon();
+        log_init("/usr/longertek/proc_daemon.log", LOG_ERROR);
+        proc_daemon();
+        exit(EXIT_SUCCESS);
+    
+    }
+    
+    do_daemon();
     
     return;
 }
@@ -161,7 +203,7 @@ void create_daemon1(void)
 void create_daemon2(void)
 {
     pid_t pid;
-    int fd1, fd2, fd3;
+
     /* FILE *file; */
     
     pid = fork();
@@ -171,33 +213,7 @@ void create_daemon2(void)
         exit(EXIT_SUCCESS);
     }
     
-    if(setsid() == -1)
-        ERR_EXIT("SETSID ERROR");
-    chdir("/");
-        
-    close(0);
-    close(1);
-    close(2);
-
-    
-    
-    fd1 = open("/dev/null", O_RDWR);
-
-        
-    fd2 = dup(0);
-
-    fd3 = dup(0);
-    
-    /* test fd dup */
-#if 0    
-    file = fopen("/tmp/dup.log", "a+");
-    fprintf(file, "fd = %d\n", fd1);
-    fprintf(file, "fd = %d\n", fd2);
-    fprintf(file, "fd = %d\n", fd3);
-    fclose(file);
-#endif
-    umask(0);
-    signal(SIGCHLD,SIG_IGN);
+    do_daemon();
     
     return;
 }
